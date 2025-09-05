@@ -1,0 +1,198 @@
+{
+  "properties": [
+    {
+      "name": "release.version",
+      "type": "java.lang.String",
+      "description": "上线的版本说明, 例如:'钱包增加fil链的功能', 建议: 每次上线钱可以编辑下此属性."
+    },
+    {
+      "name": "binance.header",
+      "type": "java.lang.String",
+      "description": "Binance api 请求必需的头信息的key."
+    },
+    {
+      "name": "binance.bi_an_host",
+      "type": "java.lang.String",
+      "description": "Binance 现货/杠杆 api 的host."
+    },
+    {
+      "name": "binance.bi_an_contract_host",
+      "type": "java.lang.String",
+      "description": "Binance 合约 api 的host."
+    },
+    {
+      "name": "binance.sub_account_path",
+      "type": "java.lang.String",
+      "description": "子账号的创建/查询 api path."
+    },
+    {
+      "name": "binance.sub_account_api_key_path",
+      "type": "java.lang.String",
+      "description": "创建/查询 子账号api."
+    },
+    {
+      "name": "binance.sub_account_margin_path",
+      "type": "java.lang.String",
+      "description": "Description for binance.sub_account_margin_path."
+    },
+    {
+      "name": "binance.sub_account_futures_path",
+      "type": "java.lang.String",
+      "description": "Description for binance.sub_account_futures_path."
+    },
+    {
+      "name": "binance.sub_account_deposit_hisrec",
+      "type": "java.lang.String",
+      "description": "Description for binance.sub_account_deposit_hisrec."
+    },
+    {
+      "name": "binance.sub_account_stock_balance",
+      "type": "java.lang.String",
+      "description": "Description for binance.sub_account_stock_balance."
+    },
+    {
+      "name": "binance.sub_account_margin_full_balance",
+      "type": "java.lang.String",
+      "description": "Description for binance.sub_account_margin_full_balance."
+    },
+    {
+      "name": "binance.sub_account_margin_isIsolated_balance",
+      "type": "java.lang.String",
+      "description": "Description for binance.sub_account_margin_isIsolated_balance."
+    },
+    {
+      "name": "binance.sub_account_contract_balance",
+      "type": "java.lang.String",
+      "description": "Description for binance.sub_account_contract_balance."
+    },
+    {
+      "name": "uutoken.host",
+      "type": "java.lang.String",
+      "description": "uutoken 服务的 host."
+    },
+    {
+      "name": "uutoken.coin_scale_path",
+      "type": "java.lang.String",
+      "description": "获取币种的精度api."
+    },
+    {
+      "name": "uutoken.trc20_name_scale",
+      "type": "java.lang.String",
+      "description": "Description for uutoken.trc20_name_scale."
+    },
+    {
+      "name": "uutoken.trx_balance_path",
+      "type": "java.lang.String",
+      "description": "Description for uutoken.trx_balance_path."
+    },
+    {
+      "name": "uutoken.trc20_balance_path",
+      "type": "java.lang.String",
+      "description": "Description for uutoken.trc20_balance_path."
+    },
+    {
+      "name": "uutoken.eth_bsc_balance_path",
+      "type": "java.lang.String",
+      "description": "Description for uutoken.eth_bsc_balance_path."
+    },
+    {
+      "name": "uutoken.btc_balance_path",
+      "type": "java.lang.String",
+      "description": "Description for uutoken.btc_balance_path."
+    },
+    {
+      "name": "uutoken.sol_balance_path",
+      "type": "java.lang.String",
+      "description": "Description for uutoken.sol_balance_path."
+    },
+    {
+      "name": "uutoken.ada_balance_path",
+      "type": "java.lang.String",
+      "description": "Description for uutoken.ada_balance_path."
+    },
+    {
+      "name": "uutoken.spl_balance_path",
+      "type": "java.lang.String",
+      "description": "Description for uutoken.spl_balance_path."
+    },
+    {
+      "name": "uutoken.coin_header",
+      "type": "java.lang.String",
+      "description": "Description for uutoken.coin_header."
+    },
+    {
+      "name": "uutoken.trans_result",
+      "type": "java.lang.String",
+      "description": "Description for uutoken.trans_result."
+    },
+    {
+      "name": "uutoken.trans_logs",
+      "type": "java.lang.String",
+      "description": "Description for uutoken.trans_logs."
+    },
+    {
+      "name": "uutoken.public_key",
+      "type": "java.lang.String",
+      "description": "Description for uutoken.public_key."
+    },
+    {
+      "name": "wallet-news.private_key",
+      "type": "java.lang.String",
+      "description": "Description for wallet-news.private_key."
+    },
+    {
+      "name": "news.notify.sms.product",
+      "type": "java.lang.String",
+      "description": "Description for news.notify.sms.product."
+    },
+    {
+      "name": "news.notify.sms.domain",
+      "type": "java.lang.String",
+      "description": "Description for news.notify.sms.domain."
+    },
+    {
+      "name": "news.notify.sms.signName",
+      "type": "java.lang.String",
+      "description": "Description for news.notify.sms.signName."
+    },
+    {
+      "name": "news.notify.sms.accessKeyId",
+      "type": "java.lang.String",
+      "description": "Description for news.notify.sms.accessKeyId."
+    },
+    {
+      "name": "news.notify.sms.accessKeySecret",
+      "type": "java.lang.String",
+      "description": "Description for news.notify.sms.accessKeySecret."
+    },
+    {
+      "name": "chain.id",
+      "type": "java.lang.String",
+      "description": "Description for chain.id."
+    },
+    {
+      "name": "chain.url",
+      "type": "java.lang.String",
+      "description": "Description for chain.url."
+    },
+    {
+      "name": "security.privateKey",
+      "type": "java.lang.String",
+      "description": "Description for security.privateKey."
+    },
+    {
+      "name": "email.amazon.accessKeyId",
+      "type": "java.lang.String",
+      "description": "Description for email.amazon.accessKeyId."
+    },
+    {
+      "name": "email.amazon.secretAccessKey",
+      "type": "java.lang.String",
+      "description": "Description for email.amazon.secretAccessKey."
+    },
+    {
+      "name": "spring.ratelimiter.enabled",
+      "type": "java.lang.String",
+      "description": "业务限流开关"
+    }
+  ] }

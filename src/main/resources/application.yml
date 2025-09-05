@@ -1,0 +1,41 @@
+release:
+  version: 1.0.0
+
+spring:
+  application:
+    name: crypto
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/wallet_news?characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowMultiQueries=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: "Rppt1234...."
+    hikari:
+      maximum-pool-size: 50
+
+  data:
+    redis:
+    host: 127.0.0.1
+    database: 0
+    password: ""
+    timeout: 20000
+    lettuce:
+      pool:
+        max-active: 16
+
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    default-property-inclusion: non_null
+
+server:
+  servlet:
+    context-path: /api
+mybatis-plus:
+  configuration:
+    mapUnderscoreToCamelCase: false
+
+security:
+  privateKey: a07a0beb642c7d53c16cf03584307df828ad8b83ee6d33b370fd630e2c471306
+# publicKey: c3598d0d1271e2990d088aef5094b5859aa557b29ab16031be88f7edee53affdc720ab7eb229ba02c0994fdeccfb31978cacefc1f7ce6e20d8e9e42796603818
+
+special:
+  password: WN3p212n5kaSd.
