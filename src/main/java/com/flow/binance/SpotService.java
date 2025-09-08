@@ -1,9 +1,7 @@
 package com.flow.binance;
 
-import cn.hutool.http.HttpRequest;
 import cn.hutool.http.Method;
 import com.flow.exception.ErrorCodeEnum;
-import com.flow.exception.ExceptionUtils;
 import com.flow.tool.*;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -12,17 +10,12 @@ import com.google.gson.JsonObject;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.util.EntityUtils;
-import org.bouncycastle.crypto.util.DigestFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-
-import static com.flow.binance.BinanceApiConstants.*;
 
 public class SpotService {
 
@@ -32,13 +25,17 @@ public class SpotService {
         spotBalanceMonitoring(60_000L);
     }
 
+    /**
+     * 现货资产监控
+     * @param sleepTime 间隔时间
+     */
     public static void spotBalanceMonitoring(long sleepTime) {
         Map<String, JsonObject> balanceMap = new HashMap<>();
 
         while (true) {
             try {
                 {
-                    String dataJsonString = sendHttp(Method.GET, "/api/v3/account", Map.of("omitZeroBalances", "true"));
+                    String dataJsonString = SpotHttpService.sendHttp(Method.GET, "/api/v3/account", Map.of("omitZeroBalances", "true"));
                     JsonObject jsonObject = Constants.GSON.fromJson(dataJsonString, JsonObject.class);
                     JsonArray asJsonArray = JsonObjectTool.getAsJsonArray(jsonObject, "balances");
                     for (JsonElement jsonElement : asJsonArray) {
@@ -142,11 +139,13 @@ public class SpotService {
 
     /**
      * 挂单成功到全部成交
+     * sell
+     * buy
      */
     public static SpotMarkerOrderDetail markerOrderSellSuccess(String baseAsset, String quoteAsset, BigDecimal quantity) {
 
         String symbolSell = baseAsset + quoteAsset;
-        BinanceExchangeInfoCache.ExchangeInfo exchangeInfo = EXCHANGE_INFO_CACHE.get(symbolSell);
+        BinanceExchangeInfoCache.ExchangeInfo exchangeInfo = SpotHttpService.EXCHANGE_INFO_CACHE.get(symbolSell);
         quantity = quantity.setScale(exchangeInfo.getStepSizePrecision(), RoundingMode.DOWN);
         JsonObject resSellJson;
         BigDecimal executedSellQty = BigDecimal.ZERO;
@@ -154,7 +153,7 @@ public class SpotService {
         {
             BigDecimal baseSellFreeAmount = BigDecimal.ZERO;
             {
-                String dataJsonString = sendHttp(Method.GET, "/api/v3/account", Map.of("omitZeroBalances", "true"));
+                String dataJsonString = SpotHttpService.sendHttp(Method.GET, "/api/v3/account", Map.of("omitZeroBalances", "true"));
                 JsonObject jsonObject = Constants.GSON.fromJson(dataJsonString, JsonObject.class);
                 JsonArray asJsonArray = JsonObjectTool.getAsJsonArray(jsonObject, "balances");
                 for (JsonElement jsonElement : asJsonArray) {
@@ -188,7 +187,7 @@ public class SpotService {
                     }
                     现货_挂单_卖 = markerOrderSell(symbolSell, subtract);
                 }
-                String res = sendHttp(Method.GET, "/api/v3/order", Map.of("symbol", symbolSell, "origClientOrderId", 现货_挂单_卖));
+                String res = SpotHttpService.sendHttp(Method.GET, "/api/v3/order", Map.of("symbol", symbolSell, "origClientOrderId", 现货_挂单_卖));
                 resSellJson = Constants.GSON.fromJson(res, JsonObject.class);
                 if (StringUtils.equalsIgnoreCase(JsonObjectTool.getAsString(resSellJson, "status"), "FILLED")) {
                     executedSellQty = executedSellQty.add(JsonObjectTool.getAsBigDecimal(resSellJson, "executedQty"));
@@ -198,12 +197,12 @@ public class SpotService {
                     if (tryCount++ < 10) {
                         TimeTool.sleep(300);
                     } else {
-                        BigDecimal spotBestPrice = getSpotBestSellPrice(JsonObjectTool.getAsString(resSellJson, "symbol"));
+                        BigDecimal spotBestPrice = SpotHttpService.getSpotBestSellPrice(JsonObjectTool.getAsString(resSellJson, "symbol"));
                         if (spotBestPrice.compareTo(JsonObjectTool.getAsBigDecimal(resSellJson, "price")) >= 0) {
                             tryCount = 0;
                             continue;
                         }
-                        String delete = sendHttp(Method.DELETE, "/api/v3/order", Map.of("symbol", symbolSell, "origClientOrderId", 现货_挂单_卖));
+                        String delete = SpotHttpService.sendHttp(Method.DELETE, "/api/v3/order", Map.of("symbol", symbolSell, "origClientOrderId", 现货_挂单_卖));
                         System.out.println("删除卖单，重新下单～: " + delete);
                         JsonObject deleteJson = Constants.GSON.fromJson(delete, JsonObject.class);
                         if (Objects.isNull(JsonObjectTool.getAsInt(deleteJson, "code"))) {
@@ -223,14 +222,14 @@ public class SpotService {
     public static SpotMarkerOrderDetail markerOrderBuySuccess(String baseAsset, String quoteAsset, BigDecimal amountUsdt) {
 
         String symbolBuy = baseAsset + quoteAsset;
-        BinanceExchangeInfoCache.ExchangeInfo exchangeInfo = EXCHANGE_INFO_CACHE.get(symbolBuy);
+        BinanceExchangeInfoCache.ExchangeInfo exchangeInfo = SpotHttpService.EXCHANGE_INFO_CACHE.get(symbolBuy);
         JsonObject resBuyJson;
         BigDecimal executedBuyQty = BigDecimal.ZERO;
         BigDecimal executedBuyU = BigDecimal.ZERO;
         {
             BigDecimal fdusdFreeAmount = BigDecimal.ZERO;
             {
-                String dataJsonString = sendHttp(Method.GET, "/api/v3/account", Map.of("omitZeroBalances", "true"));
+                String dataJsonString = SpotHttpService.sendHttp(Method.GET, "/api/v3/account", Map.of("omitZeroBalances", "true"));
                 JsonObject jsonObject = Constants.GSON.fromJson(dataJsonString, JsonObject.class);
                 JsonArray asJsonArray = JsonObjectTool.getAsJsonArray(jsonObject, "balances");
                 for (JsonElement jsonElement : asJsonArray) {
@@ -263,7 +262,7 @@ public class SpotService {
                     }
                     现货_挂单_买 = markerOrderBuy(symbolBuy, subtract);
                 }
-                String res = sendHttp(Method.GET, "/api/v3/order", Map.of("symbol", symbolBuy, "origClientOrderId", 现货_挂单_买));
+                String res = SpotHttpService.sendHttp(Method.GET, "/api/v3/order", Map.of("symbol", symbolBuy, "origClientOrderId", 现货_挂单_买));
                 resBuyJson = Constants.GSON.fromJson(res, JsonObject.class);
                 if (StringUtils.equalsIgnoreCase(JsonObjectTool.getAsString(resBuyJson, "status"), "FILLED")) {
                     executedBuyQty = executedBuyQty.add(JsonObjectTool.getAsBigDecimal(resBuyJson, "executedQty"));
@@ -273,12 +272,12 @@ public class SpotService {
                     if (tryCount2++ < 10) {
                         TimeTool.sleep(300);
                     } else {
-                        BigDecimal spotBestPrice = getSpotBestBuyPrice(JsonObjectTool.getAsString(resBuyJson, "symbol"));
+                        BigDecimal spotBestPrice = SpotHttpService.getSpotBestBuyPrice(JsonObjectTool.getAsString(resBuyJson, "symbol"));
                         if (spotBestPrice.compareTo(JsonObjectTool.getAsBigDecimal(resBuyJson, "price")) <= 0) {
                             tryCount2 = 0;
                             continue;
                         }
-                        String delete = sendHttp(Method.DELETE, "/api/v3/order", Map.of("symbol", symbolBuy, "origClientOrderId", 现货_挂单_买));
+                        String delete = SpotHttpService.sendHttp(Method.DELETE, "/api/v3/order", Map.of("symbol", symbolBuy, "origClientOrderId", 现货_挂单_买));
                         System.out.println("删除买单，重新下单～: " + delete);
                         JsonObject deleteJson = Constants.GSON.fromJson(delete, JsonObject.class);
                         if (Objects.isNull(JsonObjectTool.getAsInt(deleteJson, "code"))) {
@@ -312,18 +311,20 @@ public class SpotService {
 
     /**
      * 币安挂单
+     * sell
+     * buy
      */
     public static String markerOrder(String symbol, String side, BigDecimal amountUsdt, BigDecimal quantity) {
         // 获取价格
         String clientId = UUID.randomUUID().toString().replaceAll("-", "");
-        BinanceExchangeInfoCache.ExchangeInfo exchangeInfo = EXCHANGE_INFO_CACHE.get(symbol);
+        BinanceExchangeInfoCache.ExchangeInfo exchangeInfo = SpotHttpService.EXCHANGE_INFO_CACHE.get(symbol);
         if (Objects.isNull(exchangeInfo)) ErrorCodeEnum.throwException("exchangeInfo is null");
         while (true) {
             BigDecimal spotBestPrice = null;
             if (StringUtils.equalsIgnoreCase(side, "BUY")) {
-                spotBestPrice = getSpotBestBuyPrice(symbol);
+                spotBestPrice = SpotHttpService.getSpotBestBuyPrice(symbol);
             } else if (StringUtils.equalsIgnoreCase(side, "SELL")) {
-                spotBestPrice = getSpotBestSellPrice(symbol);
+                spotBestPrice = SpotHttpService.getSpotBestSellPrice(symbol);
             } else {
                 ErrorCodeEnum.throwException("side参数错误");
             }
@@ -332,7 +333,7 @@ public class SpotService {
             if (Objects.isNull(quantity)) {
                 quantity = amountUsdt.divide(spotBestPrice, exchangeInfo.getStepSizePrecision(), RoundingMode.DOWN);
             }
-            String res = sendHttp(Method.POST, "/api/v3/order", Map.of("symbol", symbol, "side", side, "type", "LIMIT_MAKER", "quantity", quantity.stripTrailingZeros().toPlainString(), "price", spotBestPrice.toPlainString(), "newClientOrderId", clientId));
+            String res = SpotHttpService.sendHttp(Method.POST, "/api/v3/order", Map.of("symbol", symbol, "side", side, "type", "LIMIT_MAKER", "quantity", quantity.stripTrailingZeros().toPlainString(), "price", spotBestPrice.toPlainString(), "newClientOrderId", clientId));
             JsonObject resJson = Constants.GSON.fromJson(res, JsonObject.class);
             if (StringUtils.isNotBlank(JsonObjectTool.getAsString(resJson, "orderId"))) {
                 break;
@@ -345,11 +346,15 @@ public class SpotService {
     }
 
 
+    /**
+     * 批量挂买单
+     * 价格等比间隔
+     */
     public static void markerBuyOrderBatch(String symbol, BigDecimal orderAmount, BigDecimal orderIntervalRate,
                                            BigDecimal startPrice, BigDecimal endPrice) {
-        BinanceExchangeInfoCache.ExchangeInfo exchangeInfo = SpotService.EXCHANGE_INFO_CACHE.get(symbol);
+        BinanceExchangeInfoCache.ExchangeInfo exchangeInfo = SpotHttpService.EXCHANGE_INFO_CACHE.get(symbol);
         if (Objects.isNull(exchangeInfo)) ErrorCodeEnum.throwException("exchangeInfo is null");
-        BigDecimal spotBestBuyPrice = SpotService.getSpotBestBuyPrice(symbol);
+        BigDecimal spotBestBuyPrice = SpotHttpService.getSpotBestBuyPrice(symbol);
         if (startPrice.compareTo(spotBestBuyPrice) > 0) {
             startPrice = spotBestBuyPrice;
         }
@@ -361,7 +366,7 @@ public class SpotService {
                 break;
             }
             BigDecimal quantity = orderAmount.divide(startPrice, exchangeInfo.getStepSizePrecision(), RoundingMode.UP);
-            String res = SpotService.sendHttp(Method.POST, "/api/v3/order", Map.of("symbol", symbol, "side", "BUY", "type", "LIMIT_MAKER", "quantity", quantity.stripTrailingZeros().toPlainString(), "price", startPrice.stripTrailingZeros().toPlainString(), "newClientOrderId", UUID.randomUUID().toString().replaceAll("-", "")));
+            String res = SpotHttpService.sendHttp(Method.POST, "/api/v3/order", Map.of("symbol", symbol, "side", "BUY", "type", "LIMIT_MAKER", "quantity", quantity.stripTrailingZeros().toPlainString(), "price", startPrice.stripTrailingZeros().toPlainString(), "newClientOrderId", UUID.randomUUID().toString().replaceAll("-", "")));
             resMap.put("price:" + startPrice.toPlainString(), res);
             TimeTool.sleep(200L);
         }
@@ -370,12 +375,15 @@ public class SpotService {
         });
     }
 
-
+    /**
+     * 批量挂卖单
+     * 价格等比间隔
+     */
     public static void markerSellOrderBatch(String symbol, BigDecimal orderAmount, BigDecimal orderIntervalRate,
                                            BigDecimal startPrice, BigDecimal endPrice) {
-        BinanceExchangeInfoCache.ExchangeInfo exchangeInfo = EXCHANGE_INFO_CACHE.get(symbol);
+        BinanceExchangeInfoCache.ExchangeInfo exchangeInfo = SpotHttpService.EXCHANGE_INFO_CACHE.get(symbol);
         if (Objects.isNull(exchangeInfo)) ErrorCodeEnum.throwException("exchangeInfo is null");
-        BigDecimal spotBestSellPrice = getSpotBestSellPrice(symbol);
+        BigDecimal spotBestSellPrice = SpotHttpService.getSpotBestSellPrice(symbol);
         if (startPrice.compareTo(spotBestSellPrice) < 0) {
             startPrice = spotBestSellPrice;
         }
@@ -387,7 +395,7 @@ public class SpotService {
             if (endPrice.compareTo(startPrice) > 0) {
                 break;
             }
-            String res = sendHttp(Method.POST, "/api/v3/order", Map.of("symbol", symbol, "side", "SELL", "type", "LIMIT_MAKER", "quantity", orderAmount.toPlainString(), "price", startPrice.stripTrailingZeros().toPlainString(), "newClientOrderId", UUID.randomUUID().toString().replaceAll("-", "")));
+            String res = SpotHttpService.sendHttp(Method.POST, "/api/v3/order", Map.of("symbol", symbol, "side", "SELL", "type", "LIMIT_MAKER", "quantity", orderAmount.toPlainString(), "price", startPrice.stripTrailingZeros().toPlainString(), "newClientOrderId", UUID.randomUUID().toString().replaceAll("-", "")));
             resMap.put("price:" + startPrice.toPlainString(), res);
             TimeTool.sleep(200L);
         }
@@ -395,160 +403,5 @@ public class SpotService {
             System.out.println(e.getKey() + "   " + e.getValue());
         });
     }
-
-    public static BigDecimal getSpotBestBuyPrice(String symbol) {
-        JsonObject bestBookTicker = getSpotBestBookTicker(symbol);
-        return JsonObjectTool.getAsBigDecimal(bestBookTicker, "bidPrice"); // 最优买单价
-
-    }
-
-    public static BigDecimal getSpotBestSellPrice(String symbol) {
-        JsonObject bestBookTicker = getSpotBestBookTicker(symbol);
-        return JsonObjectTool.getAsBigDecimal(bestBookTicker, "askPrice"); // 最优卖单价
-    }
-
-    private static JsonObject getSpotBestBookTicker(String symbol) {
-        String depth;
-        try {
-            HttpResponse depthRes = HttpUtils.doGet(BASE_URL, "/api/v3/ticker/bookTicker?symbol=" + symbol);
-            depth = EntityUtils.toString(depthRes.getEntity());
-        } catch (Exception e) {
-            log.warn("getBestBookTicker symbol:{}, errMsg:{}", symbol, e.getMessage());
-            return null;
-        }
-        return Constants.GSON.fromJson(depth, JsonObject.class);
-    }
-
-    public static String sendHttp(Method method, String path, Map<String, String> params) {
-        String res;
-        switch (method) {
-            case GET: {
-                res = get(path, params);
-                break;
-            }
-            case POST: {
-                res = post(path, params);
-                break;
-            }
-            case PUT: {
-                res = put(path, params);
-                break;
-            }
-            case DELETE: {
-                res = delete(path, params);
-                break;
-            }
-            default: {
-                res = "null";
-            }
-        }
-        return res;
-    }
-
-    public static String get(String path, Map<String, String> params) {
-        String url = assembleUrl(path, params);
-        cn.hutool.http.HttpResponse execute = HttpRequest.get(url).header(API_HTTP_HEADER_KEY, BIAN_API_KEY) //头信息，多个头信息多次调用此方法即可
-                .timeout(20_000).execute();
-        return execute.body();
-    }
-
-    public static String post(String path, Map<String, String> params) {
-        String url = assembleUrl(path, params);
-        cn.hutool.http.HttpResponse execute = HttpRequest.post(url).header(API_HTTP_HEADER_KEY, BIAN_API_KEY) //头信息，多个头信息多次调用此方法即可
-                .timeout(20_000) //超时，毫秒
-                .execute();
-        return execute.body();
-    }
-
-    public static String put(String path, Map<String, String> params) {
-        String url = assembleUrl(path, params);
-        cn.hutool.http.HttpResponse execute = HttpRequest.put(url).header(API_HTTP_HEADER_KEY, BIAN_API_KEY) //头信息，多个头信息多次调用此方法即可
-                .timeout(20_000) //超时，毫秒
-                .execute();
-        return execute.body();
-
-    }
-
-    public static String delete(String path, Map<String, String> params) {
-        String url = assembleUrl(path, params);
-        cn.hutool.http.HttpResponse execute = HttpRequest.delete(url).header(API_HTTP_HEADER_KEY, BIAN_API_KEY) //头信息，多个头信息多次调用此方法即可
-                .timeout(20_000) //超时，毫秒
-                .execute();
-        return execute.body();
-    }
-
-    private static String assembleUrl(String path, Map<String, String> params) {
-
-        String host = BASE_URL;
-        if (StringUtils.isBlank(path)) {
-            ErrorCodeEnum.throwException("path is null");
-        }
-
-        StringBuilder querys = new StringBuilder();
-        // recvWindow=60000&
-        long currentTimeMillis = System.currentTimeMillis();
-        querys.append("recvWindow=30000&timestamp=").append(currentTimeMillis);
-        if (!CollectionUtils.isEmpty(params)) {
-            params.forEach((key, value) -> {
-                if (Objects.nonNull(key) && Objects.nonNull(value)) {
-                    querys.append("&").append(key).append("=").append(value);
-                }
-            });
-        }
-        String reqStr = querys.toString();
-        String signature = Crypto.hmacToString(DigestFactory.createSHA256(), BIAN_SECRET_KEY, reqStr);
-        return host + path + "?" + reqStr.concat("&signature=").concat(signature);
-    }
-
-    static {
-        syncSpotExchangeInfo();
-    }
-
-    public static void syncSpotExchangeInfo() {
-        try {
-            HttpResponse httpResponse = HttpUtils.doGet("https://api.binance.com", "/api/v3/exchangeInfo");
-            String dataJsonString = EntityUtils.toString(httpResponse.getEntity());
-            JsonObject jsonObject = Constants.GSON.fromJson(dataJsonString, JsonObject.class);
-            JsonArray symbols = JsonObjectTool.getAsJsonArray(jsonObject, "symbols");
-            if (Objects.isNull(symbols) || symbols.size() <= 0) ErrorCodeEnum.NETWORK_ERROR.throwException();
-            for (JsonElement element : symbols) {
-                JsonObject symbol = (JsonObject) element;
-                BinanceExchangeInfoCache.ExchangeInfo exchangeInfo = new BinanceExchangeInfoCache.ExchangeInfo();
-                String symbolString = JsonObjectTool.getAsString(symbol, "symbol");
-                exchangeInfo.setSymbol(symbolString);
-                exchangeInfo.setBaseAsset(JsonObjectTool.getAsString(symbol, "baseAsset"));
-                exchangeInfo.setBaseAssetPrecision(JsonObjectTool.getAsInt(symbol, "baseAssetPrecision"));
-                exchangeInfo.setQuoteAsset(JsonObjectTool.getAsString(symbol, "quoteAsset"));
-                exchangeInfo.setQuoteAssetPrecision(JsonObjectTool.getAsInt(symbol, "quoteAssetPrecision"));
-                exchangeInfo.setQuoteOrderQtyMarketAllowed(JsonObjectTool.getAsBool(symbol, "quoteOrderQtyMarketAllowed"));
-                JsonArray filters = JsonObjectTool.getAsJsonArray(symbol, "filters");
-                for (JsonElement filterElement : filters) {
-                    JsonObject filter = (JsonObject) filterElement;
-                    String filterType = JsonObjectTool.getAsString(filter, "filterType");
-                    if (StringUtils.equals(filterType, "PRICE_FILTER")) {
-                        exchangeInfo.setMinPrice(JsonObjectTool.getAsBigDecimal(filter, "minPrice"));
-                        exchangeInfo.setMaxPrice(JsonObjectTool.getAsBigDecimal(filter, "maxPrice"));
-                        BigDecimal tickSize = JsonObjectTool.getAsBigDecimal(filter, "tickSize");
-                        exchangeInfo.setTickSize(tickSize);
-                        exchangeInfo.setTickSizePrecision(Objects.nonNull(tickSize) ? (-(int) (Math.log10(tickSize.doubleValue()))) : 0);
-                    } else if (StringUtils.equals(filterType, "LOT_SIZE")) {
-                        exchangeInfo.setMinQty(JsonObjectTool.getAsBigDecimal(filter, "minQty"));
-                        exchangeInfo.setMaxQty(JsonObjectTool.getAsBigDecimal(filter, "maxQty"));
-                        BigDecimal stepSize = JsonObjectTool.getAsBigDecimal(filter, "stepSize");
-                        exchangeInfo.setStepSize(stepSize);
-                        exchangeInfo.setStepSizePrecision(Objects.nonNull(stepSize) ? (-(int) (Math.log10(stepSize.doubleValue()))) : 0);
-                    } else if (StringUtils.equals(filterType, "NOTIONAL")) {
-                        exchangeInfo.setMinNotional(JsonObjectTool.getAsBigDecimal(filter, "minNotional"));
-                        exchangeInfo.setApplyToMarket(JsonObjectTool.getAsBool(filter, "applyMinToMarket"));
-                    }
-                }
-                EXCHANGE_INFO_CACHE.put(symbolString, exchangeInfo);
-            }
-        } catch (Exception e) {
-            ExceptionUtils.printStackTrace(e);
-        }
-    }
-
-    public static final ConcurrentHashMap<String, BinanceExchangeInfoCache.ExchangeInfo> EXCHANGE_INFO_CACHE = new ConcurrentHashMap<>(2500);
 
 }
