@@ -5,10 +5,10 @@ spring:
   application:
     name: crypto
   datasource:
-    url: jdbc:mysql://127.0.0.1:3306/wallet_news?characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowMultiQueries=true
+    url: jdbc:mysql://127.0.0.1:3306/crypto?characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowMultiQueries=true
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
-    password: "Rppt1234...."
+    password: "Root1234...."
     hikari:
       maximum-pool-size: 50
 
@@ -25,6 +25,9 @@ spring:
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     default-property-inclusion: non_null
+
+  main:
+    allow-circular-references: true
 
 server:
   servlet:

@@ -22,7 +22,7 @@ public class DataSecurityEthService {
 
     public static final Secp256k1 SECP256K1 = Secp256k1.getInstance();
 
-    @Value("${secret.eth.privateKey}")
+    @Value("${security.privateKey}")
     private String privateKey;
     private ECKeyPair ecKeyPair;
 

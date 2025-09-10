@@ -13,11 +13,16 @@ import org.apache.commons.lang3.StringUtils;
 import org.redisson.spring.starter.RedissonAutoConfigurationCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.cache.RedisCacheConfiguration;
+import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 /**
@@ -25,6 +30,7 @@ import java.time.LocalDateTime;
  */
 @Configuration
 public class RedisConfig {
+
     @Resource
     RedisConnectionFactory connectionFactory;
 
@@ -36,7 +42,7 @@ public class RedisConfig {
 
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JsonObjectModule());
-        mapper.registerModule((new SimpleModule()).addSerializer(new CacheConfig.NullValueSerializer(null)));
+        mapper.registerModule((new SimpleModule()).addSerializer(new NullValueSerializer(null)));
         JavaTimeModule javaTimeModule = new JavaTimeModule();
         javaTimeModule.addSerializer(LocalDateTime.class, new LocalDateTimeSerializer(Constants.standardDateTimeFormatter));
         javaTimeModule.addDeserializer(LocalDateTime.class, new LocalDateTimeDeserializer(Constants.standardDateTimeFormatter));
@@ -62,5 +68,22 @@ public class RedisConfig {
                 configuration.useSingleServer().setPassword(null);
             }
         };
+    }
+
+    @Bean
+    RedisCacheManager redisCacheManager() {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JsonObjectModule());
+        mapper.registerModule((new SimpleModule()).addSerializer(new NullValueSerializer(null)));
+        JavaTimeModule javaTimeModule = new JavaTimeModule();
+        javaTimeModule.addSerializer(LocalDateTime.class, new LocalDateTimeSerializer(Constants.standardDateTimeFormatter));
+        javaTimeModule.addDeserializer(LocalDateTime.class, new LocalDateTimeDeserializer(Constants.standardDateTimeFormatter));
+        mapper.registerModule(javaTimeModule);
+        mapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
+        return RedisCacheManager.RedisCacheManagerBuilder.fromConnectionFactory(connectionFactory)
+                .cacheDefaults(RedisCacheConfiguration.defaultCacheConfig()
+                        .serializeValuesWith(RedisSerializationContext.SerializationPair
+                                .fromSerializer(new GenericJackson2JsonRedisSerializer(mapper)))
+                        .entryTtl(Duration.ofMinutes(1L))).build();
     }
 }
