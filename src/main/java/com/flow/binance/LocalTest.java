@@ -167,7 +167,7 @@ public class LocalTest {
                     return;
                 }
             }
-
+            System.out.println("开始执行 >>>>");
             List<SpotMarkerOrderDetail> orderDetailList = new ArrayList<>();
             for (int i = 0; i < orderCount; i++) {
                 if (StringUtils.equalsIgnoreCase(buyOrSell, "BUY")) {
@@ -177,6 +177,8 @@ public class LocalTest {
                     SpotMarkerOrderDetail orderDetailBuy = SpotService.markerOrderBuySuccess(baseAsset, quoteAsset, amountOnce);
                     orderDetailList.add(orderDetailBuy);
                 }
+                System.out.println("第" + (i + 1) + "笔执行成功🎉🎉🎉, 是否继续");
+                scanner.nextLine();
             }
             int index = 1;
             BigDecimal totalAmount = BigDecimal.ZERO;
