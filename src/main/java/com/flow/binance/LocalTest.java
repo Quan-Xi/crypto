@@ -1,5 +1,12 @@
 package com.flow.binance;
 
+import cn.hutool.http.Method;
+import com.flow.exception.ErrorCodeEnum;
+import com.flow.tool.Constants;
+import com.flow.tool.JsonObjectTool;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,7 +27,6 @@ public class LocalTest {
 
     /**
      * 兑换程序
-     *
      * BTC -> ETH: BTC/FDUSD卖出成功，然后ETH/FDUSD买入直到成功；
      */
     static class SellAndBuy {
@@ -46,7 +52,7 @@ public class LocalTest {
     }
 
     /**
-     * 手动买卖程序
+     * BUY/SELL直到成功
      */
     static class SellOrBuy {
         public static void main(String[] args) {
@@ -70,7 +76,127 @@ public class LocalTest {
     }
 
     /**
-     * 批量挂买单
+     * 分多笔执行：BUY/SELL直到成功
+     */
+    static class SellOrBuyBatch {
+        public static void main(String[] args) {
+            // 查询现货的代币信息
+            System.out.println("------ Binance资产信息 ------");
+            {
+                String dataJsonString = SpotHttpService.sendHttp(Method.GET, "/api/v3/account", Map.of("omitZeroBalances", "true"));
+                JsonObject jsonObject = Constants.GSON.fromJson(dataJsonString, JsonObject.class);
+                JsonArray asJsonArray = JsonObjectTool.getAsJsonArray(jsonObject, "balances");
+                for (JsonElement jsonElement : asJsonArray) {
+                    JsonObject asJsonObject = jsonElement.getAsJsonObject();
+                    String asset = JsonObjectTool.getAsString(asJsonObject, "asset");
+                    BigDecimal free = JsonObjectTool.getAsBigDecimal(asJsonObject, "free");
+                    BigDecimal locked = JsonObjectTool.getAsBigDecimal(asJsonObject, "locked");
+                    System.out.println(asset + ": free:" + free + ", locked:" + locked);
+                }
+            }
+            Scanner scanner = new Scanner(System.in);
+            String buyOrSell;
+            while (true) {
+                System.out.print("------ 执行程序 ------\n1: BUY\n2: SELL\n请输入: ");
+                buyOrSell = scanner.nextLine();
+                if (!StringUtils.equalsAny(buyOrSell, "1", "2")) {
+                    System.out.println("输入有误，请重试");
+                    continue;
+                }
+                if (StringUtils.equals(buyOrSell, "1")) {
+                    buyOrSell = "BUY";
+                }else {
+                    buyOrSell = "SELL";
+                }
+                break;
+            }
+            String baseAsset;
+            String quoteAsset;
+            while (true) {
+                System.out.print("\n交易对信息[ETHFDUSD]：");
+                String symbol = scanner.nextLine().toUpperCase().replaceAll(" ", "");
+                if (StringUtils.endsWithIgnoreCase(symbol, "FDUSD")) {
+                    baseAsset = symbol.replaceAll("FDUSD", "");
+                    quoteAsset = "FDUSD";
+                }else if (StringUtils.endsWithIgnoreCase(symbol, "USDT")) {
+                    baseAsset = symbol.replaceAll("USDT", "");
+                    quoteAsset = "USDT";
+                }else if (StringUtils.endsWithIgnoreCase(symbol, "USDC")) {
+                    baseAsset = symbol.replaceAll("USDC", "");
+                    quoteAsset = "USDC";
+                }else {
+                    System.out.println("输入有误，请重试");
+                    continue;
+                }
+                break;
+            }
+
+            BigDecimal amountOnce;
+            while (true) {
+                System.out.print("\n每次" + buyOrSell + "数量：");
+                String opsAmount = scanner.nextLine().toUpperCase().replaceAll(" ", "");
+                try {
+                    amountOnce = new BigDecimal(opsAmount);
+                }catch (Exception e){
+                    System.out.println("输入有误，请重试");
+                    continue;
+                }
+                break;
+            }
+            Integer orderCount;
+            while (true) {
+                System.out.print("\n" + buyOrSell + "次数：");
+                String opsCount = scanner.nextLine().toUpperCase().replaceAll(" ", "");
+                try {
+                    orderCount = Integer.parseInt(opsCount);
+                }catch (Exception e){
+                    System.out.println("输入有误，请重试");
+                    continue;
+                }
+                break;
+            }
+            {
+                System.out.println("----------------- 全部信息 -----------------");
+                System.out.println("操作程序：" + buyOrSell);
+                System.out.println("交易对信息：" + baseAsset + "/" + quoteAsset);
+                System.out.println("每次" + buyOrSell + "数量：" + amountOnce);
+                System.out.println(buyOrSell + "次数：" + orderCount);
+                System.out.println("以上信息正确吗? \n确认: YES\n取消: 任意\n--------------------\n请输入: ");
+                String key = scanner.nextLine();
+                if (!StringUtils.equalsAnyIgnoreCase(key, "YES", "Y")) {
+                    return;
+                }
+            }
+
+            List<SpotMarkerOrderDetail> orderDetailList = new ArrayList<>();
+            for (int i = 0; i < orderCount; i++) {
+                if (StringUtils.equalsIgnoreCase(buyOrSell, "BUY")) {
+                    SpotMarkerOrderDetail orderDetailSell = SpotService.markerOrderSellSuccess(baseAsset, quoteAsset, amountOnce);
+                    orderDetailList.add(orderDetailSell);
+                }else if (StringUtils.equalsIgnoreCase(buyOrSell, "SELL")) {
+                    SpotMarkerOrderDetail orderDetailBuy = SpotService.markerOrderBuySuccess(baseAsset, quoteAsset, amountOnce);
+                    orderDetailList.add(orderDetailBuy);
+                }
+            }
+            int index = 1;
+            BigDecimal totalAmount = BigDecimal.ZERO;
+            BigDecimal totalAmountU = BigDecimal.ZERO;
+            for (SpotMarkerOrderDetail orderDetailSell : orderDetailList) {
+                String sellStr =  index + "：" +buyOrSell + "[" + orderDetailSell.getSymbol() + "]"  +
+                        ", 价格：" + orderDetailSell.getExecutedU().divide(orderDetailSell.getExecutedQty(), 8, RoundingMode.DOWN) +
+                        ", 数量：" + orderDetailSell.getExecutedQty() +
+                        ", 得到: " + orderDetailSell.getExecutedU();
+                System.out.println(sellStr);
+                index ++;
+            }
+            System.out.println("-------- 汇总 --------\nbase:"  + totalAmount + ", quote:" + totalAmountU + ", 价格：" + totalAmountU.divide(totalAmount, 8, RoundingMode.DOWN));
+            System.out.println("\n🎉🎉🎉完成兑换SUCCESS 🎉🎉🎉");
+
+        }
+    }
+
+    /**
+     * 批量挂买单 BUY
      */
     static class BatchLimitBuy {
         public static void main(String[] args) {
@@ -90,7 +216,7 @@ public class LocalTest {
     }
 
     /**
-     * 批量挂卖单
+     * 批量挂卖单 SELL
      */
     static class BatchLimitSell {
         public static void main(String[] args) {
